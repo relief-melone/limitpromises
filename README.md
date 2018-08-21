@@ -19,23 +19,25 @@ Usage
 
 ```js
 const limitPromises = require('limitpromises');
-
+ 
 // First you need the InputValues that will be used in each of your promises
-let Inputvalues = [1000,2000,2500];
-
+let InputValues = [1000,2000,3000,4000];
+ 
 // Then you will need a Function that returns a Promise. You only get one Input Value but you can use Objects to have access 
-// to more parameters
+// to more parameters. In this case we will just set different timeouts.
+const started = new Date();
 let PromiseFunction = function(Input){
     return new Promise((resolve, reject) => {
         setTimeout(() => {
-            resolve("Resolved after " + Input " ms");
-        });
+            console.log("Resolved after " + parseInt((new Date() -started)/1000) + " s");
+            resolve("Resolved after " + Input + " ms");
+        }, Input);
     });
 }
-
+ 
 // At last you say how many Promises shall be executed at each time
 let maxAtOnce = 2;
-
+ 
 // Now you run limitPromises. It will return an array of objects
 let promiseArray = limitPromises(PromiseFunction, InputValues, maxAtOnce);
 
