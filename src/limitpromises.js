@@ -104,7 +104,7 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey) => 
     // For each Promise that finishes start a new one until all are launched
     alreadyRunning.map((Value, Index) => {
         // Only map for indices bigger than the current launch index as everything smaller has already been launched;
-        if(Index >= launchIndex -1  && launchIndex < alreadyRunning.length){
+        if(launchIndex < alreadyRunning.length){
             Value.promiseFunc.then(() => {
                 if(launchIndex < alreadyRunning.length){
                     alreadyRunning[launchIndex].resolveLaunchPromise();
