@@ -72,11 +72,22 @@ Can be executed to manually start the Promise
 
 You can create groups. For example you might have multiple functions that make tcp requests But the total TCP requests at any given time
 cannot exceed a certain number. So in total you will need less requests than that running. To realize this you can call limitPromises like
-this
+this.
+
+Here is an Example to explain this (PromiseFunction is the same as in the first code and left out for readability here)
 
 ```js
 // Use limitpromises with a group
-let promiseArray = limitPromises(PromiseFunction, InputValues, maxAtOnce, 'TCP');
-```
 
-Now every time you call the function with the Group TCP, limitpromises will notice that it's a member of this group and will only execute the promises as soon as they become available.
+let InputValues1 = [1000, 1000, 1000, 1000];
+let InputValues2 = [1000, 1000, 1000, 1000];
+
+let maxAtOnce = 4
+
+let promiseArray = limitPromises(PromiseFunction, InputValues1, maxAtOnce, 'SomeGroup');
+let promiseArray2 = limitPromises(PromiseFunction, InputValues, maxAtOnce, 'SomeGroup');
+
+
+```
+console logs will show you that with the group set the promises resolve in 2 packs the first one after 1 second and the
+second one after 2 seconds. If you wouldn't have used a group al would have resolved after 1 second as they would only make sure they are max 4 at once within their own InputValues.
