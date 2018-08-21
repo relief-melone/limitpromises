@@ -113,8 +113,6 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey) => 
                 launchIndex = getCountFinishedOrRunningPromises(alreadyRunning);
                         
             }, err => {
-                console.log("ERROR IN SERVICE.MAXPROMISESATONCE");
-                console.log(err);
                 if(launchIndex<alreadyRunning.length){
                     alreadyRunning[runningPromises].resolveLaunchPromise();
                 } 
