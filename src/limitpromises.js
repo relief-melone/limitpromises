@@ -90,6 +90,9 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey) => 
     let runningPromises = getCountRunningPromises(alreadyRunning);      
     let launchArray = getLaunchArray(PromiseFunc, InputValues, alreadyRunning.length);    
 
+    // Turn on AutoSplice for the LaunchArray if there is a TypeKey
+    if(TypeKey) autoSpliceLaunchArray(launchArray, TypeKey);
+
     alreadyRunning = alreadyRunning.concat(launchArray);
     // Launch idex is the current index of the promise in the array that is beeing started; 
     let launchIndex = getCountFinishedOrRunningPromises(alreadyRunning);
@@ -135,6 +138,17 @@ function getCountRunningPromises(PromiseArray){
 
 function getCountFinishedOrRunningPromises(PromiseArray){
     return PromiseArray.filter(Entry => {return Entry.isRunning || Entry.isResolved || Entry.isRejected}).length;
+}
+
+// As the stack in currentPromiseArrays might get very long and slow down the application we will splice all of the launchArrays already
+// completely resolved out of the currentPromiseArrays
+function autoSpliceLaunchArray(LaunchArray, TypeKey){
+    Promise.all(LaunchArray).then(() => {
+        var indFirstElement = currentPromiseArrays[TypeKey].indexOf(LaunchArray[0]);
+        var indLastElement = currentPromiseArrays[TypeKey].indexOf(LaunchArray[LaunchArray.length-1]);
+
+        currentPromiseArrays[TypeKey].splice(indFirstElement, indLastElement); 
+    });
 }
 
 
