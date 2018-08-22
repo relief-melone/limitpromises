@@ -1,6 +1,6 @@
 {
   "name": "limitpromises",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "A small module to make lots of promises and limit the numbers to be sent out at once",
   "main": "index.js",
   "scripts": {
