@@ -91,3 +91,6 @@ let promiseArray2 = limitPromises(PromiseFunction, InputValues, maxAtOnce, 'Some
 ```
 console logs will show you that with the group set the promises resolve in 2 packs the first one after 1 second and the
 second one after 2 seconds. If you wouldn't have used a group al would have resolved after 1 second as they would only make sure they are max 4 at once within their own InputValues.
+
+One thing to keep in mind. The group is initiated on the first call of limitpromises. This sets the maxAtOnce Value. All other maxAtOnce
+values to that same group further down will be ignored.
