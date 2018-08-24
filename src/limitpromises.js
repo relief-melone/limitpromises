@@ -48,15 +48,28 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey) => {
         obj.promiseFunc = new Promise((resolve, reject) => {
             obj.launchPromise.then(() => {
                 PromiseFunc(InputValue).then((data) =>{
+                    
                     obj.isRunning = false;
                     obj.isResolved = true;
                     if(TypeKey){
-                        processedInGroup[TypeKey] = processedInGroup[TypeKey] ? processedInGroup[TypeKey]++ : 1
+                        processedInGroup[TypeKey] = processedInGroup[TypeKey] ? processedInGroup[TypeKey]++ : 1;
+                        // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
+                        if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
+                            currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
+                        }
                     }
+                    
                     resolve(data);
                 }, (err) => {
                     obj.isRunning = false;
                     obj.isRejected = true;
+                    // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
+                    if(TypeKey){
+                        if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
+                            currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
+                        }
+                    }
+                    
                     reject(err)
                 });
             });
@@ -108,19 +121,8 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Opt
         runningPromises = getCountRunningPromises(alreadyRunning);
     }
     
-    // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
-    launchArray.map((Value) => {
-        Value.promiseFunc.then(() => {
-            if(getLaunchIndex(alreadyRunning) !== -1){
-                alreadyRunning[getLaunchIndex(alreadyRunning)].resolveLaunchPromise();
-            }
-            
-        }, err => {
-            if(getLaunchIndex(alreadyRunning) !== -1){
-                alreadyRunning[getLaunchIndex(alreadyRunning)].resolveLaunchPromise();
-            }
-        });
-    })
+
+   
 
     // For each Promise that finishes start a new one until all are launched
 
