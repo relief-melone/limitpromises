@@ -90,7 +90,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
         });
         return obj;
     });
-
+    currentPromiseArrays[TypeKey] = [].concat(currentPromiseArrays[TypeKey] || [], launchArray);
     return launchArray;    
 }
 
@@ -109,22 +109,26 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Opt
     // PromiseFunc is a function that returns a promise and takes in an input value
     // InputValue is an Array of those InputValues
     // MaxAtOnce is the number of Promises maximum pending at the same time
-    let typeKey = TypeKey || "internal" + iCount++;
+    let typeKey = TypeKey || getInternalArrayName();
     let options = Options || {};
     
-    currentPromiseArrays[typeKey] = currentPromiseArrays[typeKey] || [];
     MaxAtOnce = currentPromiseMaxNumbers[typeKey] ? currentPromiseMaxNumbers[typeKey] : MaxAtOnce;
     
     if(!currentPromiseMaxNumbers[typeKey]) currentPromiseMaxNumbers[typeKey] = MaxAtOnce;
 
     
-    let runningPromises = getCountRunningPromises(currentPromiseArrays[typeKey]);      
-    let launchArray = getLaunchArray(PromiseFunc, InputValues, currentPromiseArrays[typeKey].length, typeKey, options);    
+    let runningPromises = getCountRunningPromises(currentPromiseArrays[typeKey] || []);      
+    let launchArray = getLaunchArray(
+        PromiseFunc, 
+        InputValues, 
+        currentPromiseArrays[typeKey] ? currentPromiseArrays[typeKey].length : 0, 
+        typeKey,
+        options
+    );    
 
     // Turn on AutoSplice for the LaunchArray if there is a TypeKey
     autoSpliceLaunchArray(launchArray, typeKey);
 
-    currentPromiseArrays[typeKey] = currentPromiseArrays[typeKey].concat(launchArray);
     // Launch idex is the current index of the promise in the array that is beeing started; 
 
     // First start as much promises as are allowed at once (if there are less in the array than max allowed, start all of them)
@@ -186,25 +190,7 @@ function handleTimeout(PromiseFunc, Obj, Options){
         case "none":
             break;
         case "retry":
-            setTimeout(() => {
-                if(Obj.isRunning){
-                    
-                    if(Obj.attempt>timeoutOpts.retryAttempts){
-                        // console.log(currentPromiseArrays);
-                        return Obj.rejectResult({msg: "Timeout"});
-                    }
-                    Obj.attempt++;
-                    
-                    let launchArray = getLaunchArray(PromiseFunc, [Obj.inputValue], null, null, Options, Obj.attempt);
-                    Promise.all(launchArray.map(r => {return r.result})).then(data => {
-                        if(Obj.isRunning){
-                            return Obj.resolveResult(data[0]);
-                        }                        
-                    }, err => {
-                        console.log('Retry failed. Number', Obj.attempt);
-                    });
-                }               
-            }, timeoutOpts.timeoutMillis);
+            retryPromise(PromiseFunc, Obj, timeoutOpts);
             break;
         case "reject":
             setTimeout(() =>{
@@ -239,8 +225,9 @@ function handleRejects(PromiseFunc, Obj, Err, Options){
                     return Obj.rejectResult(Err);
                 }
                 Obj.attempt++;
-                
-                let launchArray = getLaunchArray(PromiseFunc, [Obj.inputValue], null, null, Options, Obj.attempt);
+          
+                let launchArray = getLaunchArray(PromiseFunc, [Obj.inputValue], null, getInternalArrayName(), Options, Obj.attempt);
+                launchArray[0].resolveLaunchPromise();
                 Promise.all(launchArray.map(r => {return r.result})).then(data => {
                     return Obj.resolveResult(data[0]);
                 }, err => {
@@ -261,6 +248,32 @@ function cleanObject(Object){
     delete Object.promiseFunc;
 }
 
+function getInternalArrayName(){
+    return "internal" + iCount++;
+}
+
+function retryPromise(PromiseFunc, Obj, TimeoutOptions){
+    setTimeout( () => {        
+        if(Obj.isRunning && Obj.attempt++ <= TimeoutOptions.retryAttempts){
+            console.log("Retrying. Attempt Nr. " + Obj.attempt );
+            PromiseFunc(Obj.inputValue).then(data => {
+                if(Obj.isRunning){
+                    Obj.resolveResult(data);
+                }
+            }, err => {
+                if(Obj.isRunning){
+                    Obj.rejectResult(err);
+                }
+            }, TimeoutOptions.timeoutMillis);
+            setTimeout(() => {
+                if(Obj.isRunning){
+                    retryPromise(PromiseFunc, Obj, TimeoutOptions);
+                }
+                
+            });
+        }
+    }, TimeoutOptions.timeoutMillis);
+}
 
 
 module.exports = PromisesWithMaxAtOnce;
