@@ -4,7 +4,7 @@
 // If you provide a key you can make sure that you limit all the operations of a similar type. For example name your Type 'TCP' and all the functons
 // calling with that key will use the same launch array. So if F1 calls it with 5000 Promises and F2 calls it with 5000 Promises the total limit will
 // still be intact and not doubled
-
+const timeoutConfig = require('../configs/config.timeout');
 let currentPromiseArrays = {};
 let currentPromiseMaxNumbers = {};
 let processedInGroup = {};
@@ -20,14 +20,15 @@ let iCount = 0;
  * @param {Number} StartingIndex Every entry will have an index to later determin which promise of the array was resolved
  */
 
-const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey) => {
+const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Options, Attempt) => {
     // This function will return a launch Array. It takes a function that returns a promise and it's input Values as an array
     // The output is an array with each entry having 3 elements
     // resolveLaunchPromise is the function that resolves tha launchPromise with the same index
     // launchPromise triggers the execution of promisewithTcpRequest
     // promiseFunc The Input Promise with the correlating Inputvalue
 
-    
+    let options = Options || {};
+    let attempt = Attempt || 1;
     let startingIndex = StartingIndex ? StartingIndex : 0;
     let launchArray = InputValues.map(function(InputValue, Index) {
         let obj = {};
@@ -45,9 +46,14 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey) => {
         obj.isRunning = false;
         obj.isRejected = false;
         obj.isResolved = false;
+        obj.inputValue = InputValue;
+        obj.attempt = Attempt || 1;
+        obj.typeKey = TypeKey;
+
         obj.index = startingIndex + Index;
 
         obj.promiseFunc = new Promise((resolve, reject) => {
+            handleTimeout(PromiseFunc, obj, resolve, reject, options);
             obj.launchPromise.then(() => {
                 PromiseFunc(InputValue).then((data) =>{
                     
@@ -108,7 +114,7 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Opt
     
     let alreadyRunning = typeKey ? (currentPromiseArrays[typeKey] ): [];
     let runningPromises = getCountRunningPromises(alreadyRunning);      
-    let launchArray = getLaunchArray(PromiseFunc, InputValues, alreadyRunning.length, typeKey);    
+    let launchArray = getLaunchArray(PromiseFunc, InputValues, alreadyRunning.length, typeKey, options);    
 
     // Turn on AutoSplice for the LaunchArray if there is a TypeKey
     autoSpliceLaunchArray(launchArray, typeKey);
@@ -155,6 +161,54 @@ function autoSpliceLaunchArray(LaunchArray, TypeKey){
 
         currentPromiseArrays[TypeKey].splice(indFirstElement, indLastElement); 
     });
+}
+
+/**
+ * For the specified group, retrieve all of the users that belong to the group.
+ *
+ * @public
+ * @param {Function} PromiseFunc Function that returns a Promise with one InputParameter that is used
+ * @param {Object} Obj Current Object to be treated;
+ * @param {Any} InputValue The InputValue for that Promise
+ * @param {Function} Resolve The resolve of the promise
+ * @param {Function} Reject The reject of that promise
+ */
+function handleTimeout(PromiseFunc, Obj, Resolve, Reject, Options){
+    let timeoutOpts = Options.Timeout || timeoutConfig;
+    
+    switch(timeoutOpts.timeOutBehaviour){
+        case "none":
+            break;
+        case "retry":
+            setTimeout(() => {
+                if(!Obj.isResolved && !Obj.isRejected){
+                    
+                    if(Obj.attempt>timeoutOpts.retryAttempts){
+                        console.log(currentPromiseArrays);
+                        Obj.isRejected = true;
+                        Obj.isRunning = false;
+                        return Reject();
+                    }
+                    Obj.attempt++;
+                    
+                    let launchArray = getLaunchArray(PromiseFunc, [Obj.inputValue], null, null, Options, Obj.attempt);
+                    Promise.all(launchArray.map(r => {return r.promiseFunc})).then(data => {
+                        Obj.isResolved = true;
+                        Obj.isRunning = false;
+                        return Resolve(data[0]);
+                    }, err => {
+                        console.log('Retry failed. Number', Obj.attempt);
+                    });
+                }               
+            }, timeoutOpts.timeoutMillis);
+            break;
+        case "reject":
+            reject();
+            break;
+        case "resolve":
+            resolve([]);
+            break;
+    }
 }
 
 
