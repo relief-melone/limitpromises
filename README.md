@@ -96,3 +96,121 @@ second one after 2 seconds. If you wouldn't have used a group al would have reso
 
 One thing to keep in mind. The group is initiated on the first call of limitpromises. This sets the maxAtOnce Value. All other maxAtOnce
 values to that same group further down will be ignored.
+
+## Timeout Handling
+
+By default there is no timeout handling meaning limitpromise will wait till infinity for your promises to resolve. But that might not always
+be the best solution. To change this you can set it in the options
+
+### None
+
+This is the default option. But if you want to do it explicitly
+```js
+let options = {
+    Timeout: {
+        timeoutBehaviour: "none"
+    }    
+}
+
+let promiseArray = limitPromises(PromiseFunction, InputValues, maxAtOnce, 'someGroup', options);
+
+```
+
+### Reject
+
+This will cause your promise to be rejected automatically after a certain amout of time. In this case after 30 seconds
+
+```js
+let options = {
+    Timeout: {
+        timeoutBehaviour : "reject",
+        timeoutMillis : 30000
+    }
+}
+let promiseArray = limitPromises(PromiseFunction, InputValues, maxAtOnce, 'someGroup', options);
+
+```
+
+### Resolve
+You might also want to resolve your promise and just return something if e.g. its not crucial to gather all the info
+
+```js
+let options = {
+    Timeout: {
+        timeoutBehaviour : "resolve",
+        returnOnTimeout : [],
+        timeoutMillis: 30000
+    }
+}
+let promiseArray = limitPromises(PromiseFunction, InputValues, maxAtOnce, 'someGroup', options);
+```
+
+
+### Retry
+You can also tell limitpromises to retry a promise for a certain number of times before it rejects. If you retry you might want 
+to consider to turn the rejection behaviour of the promise to "none". See Reject Handling for that
+
+```js
+let options = {
+    Timeout: {
+        timeoutBehaviour : "retry",
+        retryAttempts : 3,
+        timeoutMillis: 30000
+    }
+}
+
+```
+
+## Rejection Handling
+By default if your promise rejects so will the promiseFunc in limitpromises. You can choose another behaviour like this
+
+### Reject
+As mentioned the default behaviour. You'll explicitly set it like this
+```js
+let options = {
+    Reject : {
+        rejectBehaviour : "reject"
+    }
+}
+```
+
+### Resolve
+Instead of rejecting your promise, it will be resolved returning an answer you specify.
+```js
+let options = {
+    Reject : {
+        rejectBehaviour : "resolve",
+        returnOnReject : []
+    }
+}
+```
+
+### Retry
+Works the same way as in the timeout handling.
+```js
+let options = {
+    Reject : {
+        rejectBehaviout : "retry",
+        retryAttempts : 3
+    }
+}
+```
+
+### None
+The last thing you can do is none. The difference between none and resolve is that none will not return anything. So if you use this, be it's
+advised that you set a Timeout option as well to not leave the promise pending forever. A case where this is useful is where you instead of 
+waiting for an error to return after a long period of time just retry your promise after a certain period
+
+```js
+let options = {
+    Reject : {
+        rejectBehaviour : "none",
+    },
+    Timeout : {
+        timeoutBehaviour : "retry",
+        timeoutMillis : 30000,
+        retryAttempts : 3
+    }
+}
+```
+

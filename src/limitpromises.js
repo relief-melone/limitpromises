@@ -169,7 +169,7 @@ function autoSpliceLaunchArray(LaunchArray, TypeKey){
 function handleTimeout(PromiseFunc, Obj, Resolve, Reject, Options){
     let timeoutOpts = Options.Timeout || timeoutConfig;
     
-    switch(timeoutOpts.timeOutBehaviour){
+    switch(timeoutOpts.timeoutBehaviour){
         case "none":
             break;
         case "retry":
@@ -199,7 +199,7 @@ function handleTimeout(PromiseFunc, Obj, Resolve, Reject, Options){
             reject();
             break;
         case "resolve":
-            resolve([]);
+            resolve(timeoutOpts.returnOnTimeout);
             break;
     }
 }
@@ -218,10 +218,10 @@ function handleRejects(PromiseFunc, Obj, Resolve, Reject, Err, Options){
             }            
             Reject(Err);
             break;
-        case "ignore":
+        case "resolve":
             obj.isRunning = false;
             obj.isResolved = true;
-            Resolve(rejectOpts.returnOnIgnore);
+            Resolve(rejectOpts.returnOnReject);
             break;
         case "retry":
             if(Obj.attempt>rejectOpts.retryAttempts){
