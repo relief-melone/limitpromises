@@ -18,7 +18,7 @@ let processedInGroup = {};
  * @param {Number} StartingIndex Every entry will have an index to later determin which promise of the array was resolved
  */
 
-const getLaunchArray = (PromiseFunc, InputValues, StartingIndex) => {
+const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey) => {
     // This function will return a launch Array. It takes a function that returns a promise and it's input Values as an array
     // The output is an array with each entry having 3 elements
     // resolveLaunchPromise is the function that resolves tha launchPromise with the same index
@@ -27,7 +27,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex) => {
 
 
     let startingIndex = StartingIndex ? StartingIndex : 0;
-    let launchArray = InputValues.map(function(InputValue, Index, TypeKey) {
+    let launchArray = InputValues.map(function(InputValue, Index) {
         let obj = {};
         let resLPromise;
         // Expose the resolve of the promise, so it can be called from outsite
@@ -99,35 +99,29 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Opt
 
     alreadyRunning = alreadyRunning.concat(launchArray);
     // Launch idex is the current index of the promise in the array that is beeing started; 
-    let launchIndex = getCountFinishedOrRunningPromises(alreadyRunning);
 
     // First start as much promises as are allowed at once (if there are less in the array than max allowed, start all of them)
-    for(let i=launchIndex; runningPromises < MaxAtOnce && i < alreadyRunning.length; i++){
-        alreadyRunning[i].resolveLaunchPromise();
+    for(let i=0; runningPromises < MaxAtOnce && i < launchArray.length; i++){
+        launchArray[i].resolveLaunchPromise();
         runningPromises = getCountRunningPromises(alreadyRunning);
-        launchIndex = getCountFinishedOrRunningPromises(alreadyRunning);
     }
+    
+    // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
+    launchArray.map((Value) => {
+        Value.promiseFunc.then(() => {
+            if(getLaunchIndex(alreadyRunning) !== -1){
+                alreadyRunning[getLaunchIndex(alreadyRunning)].resolveLaunchPromise();
+            }
+            
+        }, err => {
+            if(getLaunchIndex(alreadyRunning) !== -1){
+                alreadyRunning[getLaunchIndex(alreadyRunning)].resolveLaunchPromise();
+            }
+        });
+    })
 
     // For each Promise that finishes start a new one until all are launched
-    alreadyRunning.map((Value, Index) => {
-        // Only map for indices bigger than the current launch index as everything smaller has already been launched;
-        if(launchIndex < alreadyRunning.length){
-            Value.promiseFunc.then(() => {
-                if(launchIndex < alreadyRunning.length){
-                    alreadyRunning[launchIndex].resolveLaunchPromise();
-                }
-                runningPromises = getCountRunningPromises(alreadyRunning);
-                launchIndex = getCountFinishedOrRunningPromises(alreadyRunning);
-                        
-            }, err => {
-                if(launchIndex<alreadyRunning.length){
-                    alreadyRunning[runningPromises].resolveLaunchPromise();
-                } 
-                runningPromises = getCountRunningPromises(alreadyRunning);
-                launchIndex = getCountFinishedOrRunningPromises(alreadyRunning);
-            });
-        }        
-    });
+
 
     if(TypeKey){
         currentPromiseArrays[TypeKey] = alreadyRunning;
@@ -142,6 +136,11 @@ function getCountRunningPromises(PromiseArray){
 
 function getCountFinishedOrRunningPromises(PromiseArray){
     return PromiseArray.filter(Entry => {return Entry.isRunning || Entry.isResolved || Entry.isRejected}).length;
+}
+
+// Return the first Element of the Array that hasnt been started yet
+function getLaunchIndex(PromiseArray){
+    return PromiseArray.map(r => {return (r.isRunning === false && r.isRejected === false && r.isResolved === false)}).indexOf(true)
 }
 
 // As the stack in currentPromiseArrays might get very long and slow down the application we will splice all of the launchArrays already
