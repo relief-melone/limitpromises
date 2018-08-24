@@ -5,6 +5,7 @@
 // calling with that key will use the same launch array. So if F1 calls it with 5000 Promises and F2 calls it with 5000 Promises the total limit will
 // still be intact and not doubled
 const timeoutConfig = require('../configs/config.timeout');
+const rejectConfig = require('../configs/config.reject');
 let currentPromiseArrays = {};
 let currentPromiseMaxNumbers = {};
 let processedInGroup = {};
@@ -69,16 +70,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
                 
                     resolve(data);
                 }, (err) => {
-                    obj.isRunning = false;
-                    obj.isRejected = true;
-                    // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
-                    
-                    if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
-                        currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
-                    }
-                    
-                    
-                    reject(err)
+                    handleRejects(PromiseFunc, obj, resolve, reject, err, options);                    
                 });
             });
         });
@@ -172,6 +164,7 @@ function autoSpliceLaunchArray(LaunchArray, TypeKey){
  * @param {Any} InputValue The InputValue for that Promise
  * @param {Function} Resolve The resolve of the promise
  * @param {Function} Reject The reject of that promise
+ * @param {Object} Options Options that contain information about how the Timeout is handelt under Object.Timeout
  */
 function handleTimeout(PromiseFunc, Obj, Resolve, Reject, Options){
     let timeoutOpts = Options.Timeout || timeoutConfig;
@@ -208,6 +201,45 @@ function handleTimeout(PromiseFunc, Obj, Resolve, Reject, Options){
         case "resolve":
             resolve([]);
             break;
+    }
+}
+
+
+function handleRejects(PromiseFunc, Obj, Resolve, Reject, Err, Options){
+    var rejectOpts = Options.Reject || rejectConfig;
+
+    switch(rejectOpts.rejectBehaviour){
+        case "reject":
+            obj.isRunning = false;
+            obj.isRejected = true;
+            // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;            
+            if(getLaunchIndex(currentPromiseArrays[Obj.TypeKey]) !== -1){
+                currentPromiseArrays[Obj.TypeKey][getLaunchIndex(currentPromiseArrays[Obj.TypeKey])].resolveLaunchPromise();
+            }            
+            Reject(Err);
+            break;
+        case "ignore":
+            obj.isRunning = false;
+            obj.isResolved = true;
+            Resolve(rejectOpts.returnOnIgnore);
+            break;
+        case "retry":
+            if(Obj.attempt>rejectOpts.retryAttempts){
+                Obj.isRejected = true;
+                Obj.isRunning = false;
+                return Reject(Err);
+            }
+            Obj.attempt++;
+            
+            let launchArray = getLaunchArray(PromiseFunc, [Obj.inputValue], null, null, Options, Obj.attempt);
+            Promise.all(launchArray.map(r => {return r.promiseFunc})).then(data => {
+                Obj.isResolved = true;
+                Obj.isRunning = false;
+                return Resolve(data[0]);
+            }, err => {
+                console.log('Retry failed. Number', Obj.attempt);
+            });
+            break;            
     }
 }
 
