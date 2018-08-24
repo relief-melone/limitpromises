@@ -1,6 +1,10 @@
 LimitPromises
 =========
 
+** With version 1.4.0 promiseFunc is no longer available. Instead you will find your resolved promises
+in result. New features are the handling of timeouts and rejects. See the topics further down **
+
+
 This little module will make it easy to fire out a large number of promises, where you make sure only a number of them are beeing 
 processed at any given time (e.g. if you have a large amount of TCP requests, if you fire all of them at once you might run into
 problems as for example windows computers will only allow 5000 at once)
@@ -41,6 +45,10 @@ let maxAtOnce = 2;
  
 // Now you run limitPromises. It will return an array of objects
 let promiseArray = limitPromises(PromiseFunction, InputValues, maxAtOnce);
+
+promiseArray.map(p => {return p.result}).then(data => {
+    // Stuff you will do with your data;
+})
 ```
 
 The Contents of the array that will be returned are the following
@@ -60,11 +68,8 @@ Tells you if this promise has been resolved
 ### isRunning
 Tells you if this promise is running at the moment
 
-### launchPromise
-is Pending as long as this promise has not been started at the moment
-
-### promiseFunc
-the function where your value will be in after the promise is resolved
+### result
+The Promise where your result will end up in
 
 ### resolveLaunchPromise
 Can be executed to manually start the Promise
