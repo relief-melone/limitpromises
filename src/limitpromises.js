@@ -8,6 +8,8 @@
 let currentPromiseArrays = {};
 let currentPromiseMaxNumbers = {};
 let processedInGroup = {};
+//Used to create internal TypeKeys if noone has been specified by user
+let iCount = 0;
 
 /**
  * Returns an Array of Objects that are used in the PromisesWithMaxAtOnce Function.
@@ -25,7 +27,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey) => {
     // launchPromise triggers the execution of promisewithTcpRequest
     // promiseFunc The Input Promise with the correlating Inputvalue
 
-
+    let typeKey = TypeKey || "internal" + iCount++;
     let startingIndex = StartingIndex ? StartingIndex : 0;
     let launchArray = InputValues.map(function(InputValue, Index) {
         let obj = {};
@@ -51,24 +53,24 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey) => {
                     
                     obj.isRunning = false;
                     obj.isResolved = true;
-                    if(TypeKey){
-                        processedInGroup[TypeKey] = processedInGroup[TypeKey] ? processedInGroup[TypeKey]++ : 1;
-                        // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
-                        if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
-                            currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
-                        }
-                    }
                     
+                    processedInGroup[typeKey] = processedInGroup[typeKey] ? processedInGroup[typeKey]++ : 1;
+                    // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
+                    if(getLaunchIndex(currentPromiseArrays[typeKey]) !== -1){
+                        currentPromiseArrays[typeKey][getLaunchIndex(currentPromiseArrays[typeKey])].resolveLaunchPromise();
+                    
+                }
+                
                     resolve(data);
                 }, (err) => {
                     obj.isRunning = false;
                     obj.isRejected = true;
                     // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
-                    if(TypeKey){
-                        if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
-                            currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
-                        }
+                    
+                    if(getLaunchIndex(currentPromiseArrays[typeKey]) !== -1){
+                        currentPromiseArrays[typeKey][getLaunchIndex(currentPromiseArrays[typeKey])].resolveLaunchPromise();
                     }
+                    
                     
                     reject(err)
                 });
