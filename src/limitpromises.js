@@ -101,7 +101,9 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Opt
     // Launch idex is the current index of the promise in the array that is beeing started; 
 
     // First start as much promises as are allowed at once (if there are less in the array than max allowed, start all of them)
-    for(let i=0; runningPromises < MaxAtOnce && i < launchArray.length; i++){
+    // null counts as infinite so the maxAtOnceStatement will just be true if null has been submitted
+    let maxAtOnceStatment = MaxAtOnce ? (runningPromises<MaxAtOnce) : true;
+    for(let i=0; maxAtOnceStatment && i < launchArray.length; i++){
         launchArray[i].resolveLaunchPromise();
         runningPromises = getCountRunningPromises(alreadyRunning);
     }

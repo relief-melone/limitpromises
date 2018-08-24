@@ -36,6 +36,7 @@ let PromiseFunction = function(Input){
 }
  
 // At last you say how many Promises shall be executed at each time
+// null or undefined will count as inifinite
 let maxAtOnce = 2;
  
 // Now you run limitPromises. It will return an array of objects
@@ -44,10 +45,11 @@ let promiseArray = limitPromises(PromiseFunction, InputValues, maxAtOnce);
 
 The Contents of the array that will be returned are the following
 
-### index
+### queueOnInsert/index
 Just the index of the current entry. If you use grouping (see further down) the index will not be the same as the entry in
 the current array but in the stack of promises that have in total be added to that group. E.g. you have already 4 Promises in
-that group and add another 4, you'll get back an array with the length 4 but their indexes will be 4-7
+that group and add another 4, you'll get back an array with the length 4 but their indexes will be 4-7. Indexes will not be unique as the internal stack will automatically be cleared of resolved promise chunks. So the index represents the queue of the promise on
+insertion. Therefor index will be replaced by queOnInsert. In future relases index will be removed. You should therefor use queueOnInsert instead of index.
 
 ### isRejected
 Tells you if this promise has been rejected
