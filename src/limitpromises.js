@@ -7,6 +7,7 @@
 
 let currentPromiseArrays = {};
 let currentPromiseMaxNumbers = {};
+let processedInGroup = {};
 
 /**
  * Returns an Array of Objects that are used in the PromisesWithMaxAtOnce Function.
@@ -26,7 +27,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex) => {
 
 
     let startingIndex = StartingIndex ? StartingIndex : 0;
-    let launchArray = InputValues.map(function(InputValue, Index) {
+    let launchArray = InputValues.map(function(InputValue, Index, TypeKey) {
         let obj = {};
         let resLPromise;
         // Expose the resolve of the promise, so it can be called from outsite
@@ -49,6 +50,9 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex) => {
                 PromiseFunc(InputValue).then((data) =>{
                     obj.isRunning = false;
                     obj.isResolved = true;
+                    if(TypeKey){
+                        processedInGroup[TypeKey] = processedInGroup[TypeKey] ? processedInGroup[TypeKey]++ : 1
+                    }
                     resolve(data);
                 }, (err) => {
                     obj.isRunning = false;
@@ -73,12 +77,12 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex) => {
  * @param {String} TypeKey A Key that is set to group promises together. So e.g. you set the key to TCP no matter which function calls with that Key it wont exceed the maxAtOnce Promises 
  */
 
-const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey) => {
+const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Options) => {
     // You can input any promise that should be limited by open at the same time
     // PromiseFunc is a function that returns a promise and takes in an input value
     // InputValue is an Array of those InputValues
     // MaxAtOnce is the number of Promises maximum pending at the same time
-
+    let options = Options || {};
     if(TypeKey){
         currentPromiseArrays[TypeKey] = currentPromiseArrays[TypeKey] || [];
         MaxAtOnce = currentPromiseMaxNumbers[TypeKey] ? currentPromiseMaxNumbers[TypeKey] : MaxAtOnce;
@@ -88,7 +92,7 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey) => 
     }
     let alreadyRunning = TypeKey ? (currentPromiseArrays[TypeKey] ): [];
     let runningPromises = getCountRunningPromises(alreadyRunning);      
-    let launchArray = getLaunchArray(PromiseFunc, InputValues, alreadyRunning.length);    
+    let launchArray = getLaunchArray(PromiseFunc, InputValues, alreadyRunning.length, TypeKey);    
 
     // Turn on AutoSplice for the LaunchArray if there is a TypeKey
     if(TypeKey) autoSpliceLaunchArray(launchArray, TypeKey);
@@ -143,7 +147,7 @@ function getCountFinishedOrRunningPromises(PromiseArray){
 // As the stack in currentPromiseArrays might get very long and slow down the application we will splice all of the launchArrays already
 // completely resolved out of the currentPromiseArrays
 function autoSpliceLaunchArray(LaunchArray, TypeKey){
-    Promise.all(LaunchArray).then(() => {
+    Promise.all(LaunchArray.map(e => {return e.promiseFunc})).then(() => {
         var indFirstElement = currentPromiseArrays[TypeKey].indexOf(LaunchArray[0]);
         var indLastElement = currentPromiseArrays[TypeKey].indexOf(LaunchArray[LaunchArray.length-1]);
 
