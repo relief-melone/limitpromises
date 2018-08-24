@@ -27,7 +27,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey) => {
     // launchPromise triggers the execution of promisewithTcpRequest
     // promiseFunc The Input Promise with the correlating Inputvalue
 
-    let typeKey = TypeKey || "internal" + iCount++;
+    
     let startingIndex = StartingIndex ? StartingIndex : 0;
     let launchArray = InputValues.map(function(InputValue, Index) {
         let obj = {};
@@ -54,10 +54,10 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey) => {
                     obj.isRunning = false;
                     obj.isResolved = true;
                     
-                    processedInGroup[typeKey] = processedInGroup[typeKey] ? processedInGroup[typeKey]++ : 1;
+                    processedInGroup[TypeKey] = processedInGroup[TypeKey] ? processedInGroup[TypeKey]++ : 1;
                     // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
-                    if(getLaunchIndex(currentPromiseArrays[typeKey]) !== -1){
-                        currentPromiseArrays[typeKey][getLaunchIndex(currentPromiseArrays[typeKey])].resolveLaunchPromise();
+                    if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
+                        currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
                     
                 }
                 
@@ -67,8 +67,8 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey) => {
                     obj.isRejected = true;
                     // Every time a promise finishes start the first one from the alreadyRunningArray that hasnt been started yet;
                     
-                    if(getLaunchIndex(currentPromiseArrays[typeKey]) !== -1){
-                        currentPromiseArrays[typeKey][getLaunchIndex(currentPromiseArrays[typeKey])].resolveLaunchPromise();
+                    if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
+                        currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
                     }
                     
                     
@@ -97,20 +97,21 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Opt
     // PromiseFunc is a function that returns a promise and takes in an input value
     // InputValue is an Array of those InputValues
     // MaxAtOnce is the number of Promises maximum pending at the same time
+    let typeKey = TypeKey || "internal" + iCount++;
     let options = Options || {};
-    if(TypeKey){
-        currentPromiseArrays[TypeKey] = currentPromiseArrays[TypeKey] || [];
-        MaxAtOnce = currentPromiseMaxNumbers[TypeKey] ? currentPromiseMaxNumbers[TypeKey] : MaxAtOnce;
-        
-        if(!currentPromiseMaxNumbers[TypeKey]) currentPromiseMaxNumbers[TypeKey] = MaxAtOnce;
+    
+    currentPromiseArrays[typeKey] = currentPromiseArrays[typeKey] || [];
+    MaxAtOnce = currentPromiseMaxNumbers[typeKey] ? currentPromiseMaxNumbers[typeKey] : MaxAtOnce;
+    
+    if(!currentPromiseMaxNumbers[typeKey]) currentPromiseMaxNumbers[typeKey] = MaxAtOnce;
 
-    }
-    let alreadyRunning = TypeKey ? (currentPromiseArrays[TypeKey] ): [];
+    
+    let alreadyRunning = typeKey ? (currentPromiseArrays[typeKey] ): [];
     let runningPromises = getCountRunningPromises(alreadyRunning);      
-    let launchArray = getLaunchArray(PromiseFunc, InputValues, alreadyRunning.length, TypeKey);    
+    let launchArray = getLaunchArray(PromiseFunc, InputValues, alreadyRunning.length, typeKey);    
 
     // Turn on AutoSplice for the LaunchArray if there is a TypeKey
-    if(TypeKey) autoSpliceLaunchArray(launchArray, TypeKey);
+    autoSpliceLaunchArray(launchArray, typeKey);
 
     alreadyRunning = alreadyRunning.concat(launchArray);
     // Launch idex is the current index of the promise in the array that is beeing started; 
@@ -123,15 +124,10 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Opt
         runningPromises = getCountRunningPromises(alreadyRunning);
     }
     
-
-   
-
     // For each Promise that finishes start a new one until all are launched
-
-
-    if(TypeKey){
-        currentPromiseArrays[TypeKey] = alreadyRunning;
-    }
+    
+    currentPromiseArrays[typeKey] = alreadyRunning;
+    
     return launchArray;
 }
 
