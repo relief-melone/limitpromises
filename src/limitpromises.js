@@ -122,6 +122,7 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Opt
     for(let i=0; maxAtOnceStatment && i < launchArray.length; i++){
         launchArray[i].resolveLaunchPromise();
         runningPromises = getCountRunningPromises(alreadyRunning);
+        maxAtOnceStatment = MaxAtOnce ? (runningPromises<MaxAtOnce) : true;
     }
     
     // For each Promise that finishes start a new one until all are launched
