@@ -56,7 +56,6 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
            obj.rejectResult = rejectResult;
         });
         obj.result.then(data => {
-            console.log(data);
             if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
                 currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
             
@@ -66,7 +65,6 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
             
             return cleanObject(obj);
         }, err => {
-            console.log(err);
             if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
                 currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
             
@@ -210,8 +208,7 @@ function handleTimeout(PromiseFunc, Obj, Options){
 
 function handleRejects(PromiseFunc, Obj, Err, Options){
     var rejectOpts = Options.Reject || rejectConfig;
-    let behaviour = rejectOpts.rejectBehaviour;
-    switch(behaviour){
+    switch(rejectOpts.rejectBehaviour){
         case "reject":
             // Every time a promise finishes start the first one from the currentPromiseArrays[typeKey]Array that hasnt been started yet;                 
             if(Obj.isRunning) return Obj.rejectResult(Err);      
@@ -220,21 +217,7 @@ function handleRejects(PromiseFunc, Obj, Err, Options){
             if(Obj.isRunning) return Obj.resolveResult(rejectOpts.returnOnReject);
             break;
         case "retry":
-            if(Obj.isRunning){
-                if(Obj.attempt>rejectOpts.retryAttempts){
-                    return Obj.rejectResult(Err);
-                }
-                Obj.attempt++;
-          
-                let launchArray = getLaunchArray(PromiseFunc, [Obj.inputValue], null, getInternalArrayName(), Options, Obj.attempt);
-                launchArray[0].resolveLaunchPromise();
-                Promise.all(launchArray.map(r => {return r.result})).then(data => {
-                    return Obj.resolveResult(data[0]);
-                }, err => {
-                    console.log('Retry failed. Number', Obj.attempt);
-                });
-                   
-            }   
+            if(Obj.isRunning) return retryPromiseRejected(PromiseFunc, Obj, rejectOpts);
             break;                  
     }
 }
@@ -255,7 +238,6 @@ function getInternalArrayName(){
 function retryPromise(PromiseFunc, Obj, TimeoutOptions){
     setTimeout( () => {        
         if(Obj.isRunning && Obj.attempt++ <= TimeoutOptions.retryAttempts){
-            console.log("Retrying. Attempt Nr. " + Obj.attempt );
             PromiseFunc(Obj.inputValue).then(data => {
                 if(Obj.isRunning){
                     Obj.resolveResult(data);
@@ -265,15 +247,34 @@ function retryPromise(PromiseFunc, Obj, TimeoutOptions){
                     Obj.rejectResult(err);
                 }
             }, TimeoutOptions.timeoutMillis);
-            setTimeout(() => {
-                if(Obj.isRunning){
-                    retryPromise(PromiseFunc, Obj, TimeoutOptions);
-                }
+            
+            if(Obj.isRunning){
+                retryPromise(PromiseFunc, Obj, TimeoutOptions);
+            }
                 
-            });
+
+        } else if (Obj.isRunning && Obj.attempt > TimeoutOptions.retryAttempts){
+            Obj.rejectResult({msg: "Timed out after " + TimeoutOptions.retryAttempts + " attempts"});
         }
     }, TimeoutOptions.timeoutMillis);
 }
 
+function retryPromiseRejected (PromiseFunc, Obj, RejectOptions){
+    PromiseFunc(Obj.inputValue).then(data => {
+        if(Obj.isRunning && Obj.attempt++ <= RejectOptions.retryAttempts){
+            PromiseFunc(Obj.inputValue).then(data => {
+                if(Obj.isRunning){
+                    Obj.resolveResult(data);
+                }
+            }, err => {
+                if(Obj.isRunning){
+                    retryPromiseRejected(PromiseFunc, Obj, Reject);
+                }
+            })
+        } else if(Obj.isRunning && Obj.attempt > RejectOptions.retryAttempts){
+            Obj.rejectResult({msg: "Rejected after " + RejectOptions.retryAttempts + " attempts"});
+        }
+    })
+}
 
 module.exports = PromisesWithMaxAtOnce;

@@ -153,7 +153,7 @@ let promiseArray = limitPromises(PromiseFunction, InputValues, maxAtOnce, 'someG
 
 ### Retry
 You can also tell limitpromises to retry a promise for a certain number of times before it rejects. If you retry you might want 
-to consider to turn the rejection behaviour of the promise to "none". See Reject Handling for that
+to consider to turn the rejection behaviour of the promise to "none". limitpromises will wait for your initial promise and all retrys you make and will resolve your result with whatever brings back a result first. So if you have 3 retry attempts and none of them have failed so far, all of those would still be able to resole.
 
 ```js
 let options = {
