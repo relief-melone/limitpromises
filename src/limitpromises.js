@@ -56,7 +56,8 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
         obj.started = new Date();
         obj.typeKey = TypeKey;
 
-        obj.index = startingIndex + Index;
+        obj.queueOnInsert = startingIndex + Index;
+        
         obj.result = new Promise((resolveResult, rejectResult) => {
            obj.resolveResult = resolveResult;
            obj.rejectResult = rejectResult;
