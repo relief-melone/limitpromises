@@ -188,7 +188,7 @@ function handleTimeout(PromiseFunc, Obj, Options){
         case "none":
             break;
         case "retry":
-            retryPromise(PromiseFunc, Obj, timeoutOpts);
+            retryPromise(PromiseFunc, Obj, Options);
             break;
         case "reject":
             setTimeout(() =>{
@@ -218,7 +218,10 @@ function handleRejects(PromiseFunc, Obj, Err, Options){
             break;
         case "retry":
             if(Obj.isRunning) return retryPromiseRejected(PromiseFunc, Obj, rejectOpts);
-            break;                  
+            break;  
+        case "none":
+            console.log("error ignored");
+            break;                
     }
 }
 
@@ -235,33 +238,39 @@ function getInternalArrayName(){
     return "internal" + iCount++;
 }
 
-function retryPromise(PromiseFunc, Obj, TimeoutOptions){
-    setTimeout( () => {        
-        if(Obj.isRunning && Obj.attempt++ <= TimeoutOptions.retryAttempts){
+function retryPromise(PromiseFunc, Obj, Options){
+    let timeoutOpts = Options.Timeout;
+   
+    setTimeout( () => {         
+        if(Obj.isRunning && Obj.attempt <= timeoutOpts.retryAttempts){ 
+            console.log("Timeout. Retrying. Nr " + Obj.attempt);
             PromiseFunc(Obj.inputValue).then(data => {
                 if(Obj.isRunning){
                     Obj.resolveResult(data);
                 }
             }, err => {
                 if(Obj.isRunning){
-                    Obj.rejectResult(err);
+                    console.log("error caught");
+                    handleRejects(PromiseFunc, Obj, err, Options);
                 }
-            }, TimeoutOptions.timeoutMillis);
+            }, timeoutOpts.timeoutMillis);
             
             if(Obj.isRunning){
-                retryPromise(PromiseFunc, Obj, TimeoutOptions);
+                retryPromise(PromiseFunc, Obj, Options);
             }
-                
-
-        } else if (Obj.isRunning && Obj.attempt > TimeoutOptions.retryAttempts){
-            Obj.rejectResult({msg: "Timed out after " + TimeoutOptions.retryAttempts + " attempts"});
+            Obj.attempt++;
+            
+        } else if (Obj.isRunning && Obj.attempt > timeoutOpts.retryAttempts){
+            console.log("Timed out after " + timeoutOpts.retryAttempts + " attempts")
+            Obj.rejectResult({msg: "Timed out after " + timeoutOpts.retryAttempts + " attempts"});
         }
-    }, TimeoutOptions.timeoutMillis);
+    }, timeoutOpts.timeoutMillis);
 }
 
-function retryPromiseRejected (PromiseFunc, Obj, RejectOptions){
+function retryPromiseRejected (PromiseFunc, Obj, Options){
+    let rejectOpts = Options.Reject;
     PromiseFunc(Obj.inputValue).then(data => {
-        if(Obj.isRunning && Obj.attempt++ <= RejectOptions.retryAttempts){
+        if(Obj.isRunning && Obj.attempt++ <= rejectOpts.retryAttempts){
             PromiseFunc(Obj.inputValue).then(data => {
                 if(Obj.isRunning){
                     Obj.resolveResult(data);
@@ -271,8 +280,8 @@ function retryPromiseRejected (PromiseFunc, Obj, RejectOptions){
                     retryPromiseRejected(PromiseFunc, Obj, Reject);
                 }
             })
-        } else if(Obj.isRunning && Obj.attempt > RejectOptions.retryAttempts){
-            Obj.rejectResult({msg: "Rejected after " + RejectOptions.retryAttempts + " attempts"});
+        } else if(Obj.isRunning && Obj.attempt > rejectOpts.retryAttempts){
+            Obj.rejectResult({msg: "Rejected after " + rejectOpts.retryAttempts + " attempts"});
         }
     })
 }
