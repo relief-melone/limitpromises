@@ -4,11 +4,16 @@
 // If you provide a key you can make sure that you limit all the operations of a similar type. For example name your Type 'TCP' and all the functons
 // calling with that key will use the same launch array. So if F1 calls it with 5000 Promises and F2 calls it with 5000 Promises the total limit will
 // still be intact and not doubled
-const timeoutConfig = require('../configs/config.timeout');
-const rejectConfig = require('../configs/config.reject');
+
+const handleRejects = require('./services/service.handleRejects');
+const handleTimeouts = require('./services/service.handleTimeouts');
+const cleanObject = require('./services/service.cleanObject');
+const getCountRunningPromises = require('./services/service.getCountRunningPromises');
+const getLaunchIndex = require('./services/service.getLaunchIndex');
+
+
 let currentPromiseArrays = {};
 let currentPromiseMaxNumbers = {};
-let processedInGroup = {};
 //Used to create internal TypeKeys if noone has been specified by user
 let iCount = 0;
 
@@ -48,6 +53,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
         obj.isResolved = false;
         obj.inputValue = InputValue;
         obj.attempt = Attempt || 1;
+        obj.started = new Date();
         obj.typeKey = TypeKey;
 
         obj.index = startingIndex + Index;
@@ -75,7 +81,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
         })
         
         obj.launchPromise.then(() => {
-            handleTimeout(PromiseFunc, obj, options);
+            handleTimeouts(PromiseFunc, obj, options);
             PromiseFunc(InputValue).then((data) =>{
                 if(obj.isRunning){                    
                     return obj.resolveResult(data);                        
@@ -143,20 +149,6 @@ const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Opt
     return launchArray;
 }
 
-function getCountRunningPromises(PromiseArray){
-    // 
-    return PromiseArray.filter(Entry => {return Entry.isRunning === true}).length;
-}
-
-function getCountFinishedOrRunningPromises(PromiseArray){
-    return PromiseArray.filter(Entry => {return Entry.isRunning || Entry.isResolved || Entry.isRejected}).length;
-}
-
-// Return the first Element of the Array that hasnt been started yet
-function getLaunchIndex(PromiseArray){
-    return PromiseArray.map(r => {return (r.isRunning === false && r.isRejected === false && r.isResolved === false)}).indexOf(true)
-}
-
 // As the stack in currentPromiseArrays might get very long and slow down the application we will splice all of the launchArrays already
 // completely resolved out of the currentPromiseArrays
 function autoSpliceLaunchArray(LaunchArray, TypeKey){
@@ -170,121 +162,8 @@ function autoSpliceLaunchArray(LaunchArray, TypeKey){
     });
 }
 
-/**
- * For the specified group, retrieve all of the users that belong to the group.
- *
- * @public
- * @param {Function} PromiseFunc Function that returns a Promise with one InputParameter that is used
- * @param {Object} Obj Current Object to be treated;
- * @param {Any} InputValue The InputValue for that Promise
- * @param {Function} Resolve The resolve of the promise
- * @param {Function} Reject The reject of that promise
- * @param {Object} Options Options that contain information about how the Timeout is handelt under Object.Timeout
- */
-function handleTimeout(PromiseFunc, Obj, Options){
-    let timeoutOpts = Options.Timeout || timeoutConfig;
-
-    switch(timeoutOpts.timeoutBehaviour){
-        case "none":
-            break;
-        case "retry":
-            retryPromise(PromiseFunc, Obj, Options);
-            break;
-        case "reject":
-            setTimeout(() =>{
-                if(Obj.isRunning){
-                    return Obj.rejectResult({msg: "Timeout"});
-                }                
-            }, timeoutOpts.timeoutMillis);
-            break;
-        case "resolve":
-            setTimeout(() => {
-                if(Obj.isRunning){
-                    return Obj.resolveResult(timeoutOpts.returnOnTimeout);
-                }  
-            }, timeoutOpts.timeoutMillis);
-                      
-            break;
-    }
-}
-
-
-function handleRejects(PromiseFunc, Obj, Err, Options){
-    var rejectOpts = Options.Reject || rejectConfig;
-    switch(rejectOpts.rejectBehaviour){
-        case "reject":
-            // Every time a promise finishes start the first one from the currentPromiseArrays[typeKey]Array that hasnt been started yet;                 
-            if(Obj.isRunning) return Obj.rejectResult(Err);      
-            break;
-        case "resolve":
-            if(Obj.isRunning) return Obj.resolveResult(rejectOpts.returnOnReject);
-            break;
-        case "retry":
-            if(Obj.isRunning) return retryPromiseRejected(PromiseFunc, Obj, Options);
-            break;  
-        case "none":
-            break;                
-    }
-}
-
-function cleanObject(Object){
-    delete Object.resolve;
-    delete Object.reject;
-    delete Object.resolveResult;
-    delete Object.rejectResult;
-    delete Object.launchPromise;
-    delete Object.promiseFunc;
-}
-
 function getInternalArrayName(){
     return "internal" + iCount++;
-}
-
-function retryPromise(PromiseFunc, Obj, Options){
-    let timeoutOpts = Options.Timeout;
-   
-    setTimeout( () => {         
-        if(Obj.isRunning && Obj.attempt <= timeoutOpts.retryAttempts){ 
-            PromiseFunc(Obj.inputValue).then(data => {
-                if(Obj.isRunning){
-                    Obj.resolveResult(data);
-                }
-            }, err => {
-                if(Obj.isRunning){
-                    handleRejects(PromiseFunc, Obj, err, Options);
-                }
-            });
-            
-            if(Obj.isRunning){
-                retryPromise(PromiseFunc, Obj, Options);
-            }
-            Obj.attempt++;
-            
-        } else if (Obj.isRunning && Obj.attempt > timeoutOpts.retryAttempts){
-            Obj.rejectResult({msg: "Timed out after " + timeoutOpts.retryAttempts + " attempts"});
-        }
-    }, timeoutOpts.timeoutMillis);
-}
-
-function retryPromiseRejected (PromiseFunc, Obj, Options){
-    let rejectOpts = Options.Reject;
-    PromiseFunc(Obj.inputValue).then(data => {
-        if(Obj.isRunning && Obj.attempt <= rejectOpts.retryAttempts){
-           
-            if(Obj.isRunning){
-                Obj.resolveResult(data);
-            }
-            
-        } else if(Obj.isRunning && Obj.attempt > rejectOpts.retryAttempts){
-            Obj.rejectResult({msg: "Rejected after " + rejectOpts.retryAttempts + " attempts"});
-        }
-        
-    }, err => {
-        if(Obj.isRunning){
-            handleRejects(PromiseFunc, Obj, err, Options);
-        }
-    });
-    Obj.attempt++;
 }
 
 module.exports = PromisesWithMaxAtOnce;
