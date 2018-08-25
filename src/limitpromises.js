@@ -198,9 +198,12 @@ function handleTimeout(PromiseFunc, Obj, Options){
             }, timeoutOpts.timeoutMillis);
             break;
         case "resolve":
-            if(!Obj.isRunning){
-                return Obj.resolveResult(timeoutOpts.returnOnTimeout);
-            }            
+            setTimeout(() => {
+                if(Obj.isRunning){
+                    return Obj.resolveResult(timeoutOpts.returnOnTimeout);
+                }  
+            }, timeoutOpts.timeoutMillis);
+                      
             break;
     }
 }
