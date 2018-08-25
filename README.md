@@ -46,9 +46,9 @@ let maxAtOnce = 2;
 // Now you run limitPromises. It will return an array of objects
 let promiseArray = limitPromises(PromiseFunction, InputValues, maxAtOnce);
 
-promiseArray.map(p => {return p.result}).then(data => {
+Promise.all(promiseArray.map(p => {return p.result})).then(data => {
     // Stuff you will do with your data;
-})
+});
 ```
 
 The Contents of the array that will be returned are the following
