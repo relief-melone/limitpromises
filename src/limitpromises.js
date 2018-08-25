@@ -217,10 +217,9 @@ function handleRejects(PromiseFunc, Obj, Err, Options){
             if(Obj.isRunning) return Obj.resolveResult(rejectOpts.returnOnReject);
             break;
         case "retry":
-            if(Obj.isRunning) return retryPromiseRejected(PromiseFunc, Obj, rejectOpts);
+            if(Obj.isRunning) return retryPromiseRejected(PromiseFunc, Obj, Options);
             break;  
         case "none":
-            console.log("error ignored");
             break;                
     }
 }
@@ -243,17 +242,15 @@ function retryPromise(PromiseFunc, Obj, Options){
    
     setTimeout( () => {         
         if(Obj.isRunning && Obj.attempt <= timeoutOpts.retryAttempts){ 
-            console.log("Timeout. Retrying. Nr " + Obj.attempt);
             PromiseFunc(Obj.inputValue).then(data => {
                 if(Obj.isRunning){
                     Obj.resolveResult(data);
                 }
             }, err => {
                 if(Obj.isRunning){
-                    console.log("error caught");
                     handleRejects(PromiseFunc, Obj, err, Options);
                 }
-            }, timeoutOpts.timeoutMillis);
+            });
             
             if(Obj.isRunning){
                 retryPromise(PromiseFunc, Obj, Options);
@@ -261,7 +258,6 @@ function retryPromise(PromiseFunc, Obj, Options){
             Obj.attempt++;
             
         } else if (Obj.isRunning && Obj.attempt > timeoutOpts.retryAttempts){
-            console.log("Timed out after " + timeoutOpts.retryAttempts + " attempts")
             Obj.rejectResult({msg: "Timed out after " + timeoutOpts.retryAttempts + " attempts"});
         }
     }, timeoutOpts.timeoutMillis);
@@ -270,20 +266,22 @@ function retryPromise(PromiseFunc, Obj, Options){
 function retryPromiseRejected (PromiseFunc, Obj, Options){
     let rejectOpts = Options.Reject;
     PromiseFunc(Obj.inputValue).then(data => {
-        if(Obj.isRunning && Obj.attempt++ <= rejectOpts.retryAttempts){
-            PromiseFunc(Obj.inputValue).then(data => {
-                if(Obj.isRunning){
-                    Obj.resolveResult(data);
-                }
-            }, err => {
-                if(Obj.isRunning){
-                    retryPromiseRejected(PromiseFunc, Obj, Reject);
-                }
-            })
+        if(Obj.isRunning && Obj.attempt <= rejectOpts.retryAttempts){
+           
+            if(Obj.isRunning){
+                Obj.resolveResult(data);
+            }
+            
         } else if(Obj.isRunning && Obj.attempt > rejectOpts.retryAttempts){
             Obj.rejectResult({msg: "Rejected after " + rejectOpts.retryAttempts + " attempts"});
         }
-    })
+        
+    }, err => {
+        if(Obj.isRunning){
+            handleRejects(PromiseFunc, Obj, err, Options);
+        }
+    });
+    Obj.attempt++;
 }
 
 module.exports = PromisesWithMaxAtOnce;
