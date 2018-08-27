@@ -53,6 +53,11 @@ Promise.all(promiseArray.map(p => {return p.result})).then(data => {
 
 The Contents of the array that will be returned are the following
 
+
+### indexInGroup
+Tells you how many promises have been added to that group. If you don't use grouping this will be identical to the index of the array
+returned
+
 ### queueOnInsert
 Just the index of the current entry. If you use grouping (see further down) the queueOnInsert will not be the same as the entry in
 the current array but in the stack of promises that have in total be added to that group. E.g. you have already 4 Promises in

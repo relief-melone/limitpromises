@@ -14,6 +14,7 @@ const getLaunchIndex = require('./services/service.getLaunchIndex');
 
 let currentPromiseArrays = {};
 let currentPromiseMaxNumbers = {};
+let insertedInTotal = {};
 //Used to create internal TypeKeys if noone has been specified by user
 let iCount = 0;
 
@@ -25,7 +26,6 @@ let iCount = 0;
  * @param {Array} InputValues Array with the Inputvalues. One promise for each entry is created
  * @param {Number} StartingIndex Every entry will have an index to later determin which promise of the array was resolved
  */
-
 const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Options, Attempt) => {
     // This function will return a launch Array. It takes a function that returns a promise and it's input Values as an array
     // The output is an array with each entry having 3 elements
@@ -55,6 +55,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
         obj.attempt = Attempt || 1;
         obj.started = new Date();
         obj.typeKey = TypeKey;
+        obj.indexInGroup = insertedInTotal[TypeKey] = insertedInTotal[TypeKey] ? ++insertedInTotal[TypeKey] : 0;
 
         obj.queueOnInsert = startingIndex + Index;
         
@@ -69,7 +70,6 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
             } 
             obj.isRunning = false;
             obj.isResolved = true;
-            
             return cleanObject(obj);
         }, err => {
             if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
@@ -108,8 +108,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
  * @param {Number} MaxAtOnce Number of Promises that can run at the same time
  * @param {String} TypeKey A Key that is set to group promises together. So e.g. you set the key to TCP no matter which function calls with that Key it wont exceed the maxAtOnce Promises 
  */
-
-const PromisesWithMaxAtOnce = (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Options) => {
+function PromisesWithMaxAtOnce (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Options){
     // You can input any promise that should be limited by open at the same time
     // PromiseFunc is a function that returns a promise and takes in an input value
     // InputValue is an Array of those InputValues
