@@ -5,7 +5,7 @@
  *
  * @public
  * @param {Function} PromiseFunc Function that returns a Promise with one InputParameter that is used
- * @param {Object} Obj Current Object to be treated;
+ * @param {Object} Obj Current Object to be treated
  * @param {Any} InputValue The InputValue for that Promise
  * @param {Function} Resolve The resolve of the promise
  * @param {Function} Reject The reject of that promise

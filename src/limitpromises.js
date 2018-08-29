@@ -25,6 +25,8 @@ let iCount = 0;
  * @param {Function} PromiseFunc Function that returns a Promise with one InputParameter that is used
  * @param {Array} InputValues Array with the Inputvalues. One promise for each entry is created
  * @param {Number} StartingIndex Every entry will have an index to later determin which promise of the array was resolved
+ * 
+ * @returns {Object[]} Returns an array of Objects. One for each Promise that has to be created
  */
 const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Options, Attempt) => {
     // This function will return a launch Array. It takes a function that returns a promise and it's input Values as an array
@@ -55,6 +57,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
         obj.attempt = Attempt || 1;
         obj.started = new Date();
         obj.typeKey = TypeKey;
+        obj.maxAtOnce = currentPromiseMaxNumbers[TypeKey];
         obj.indexInGroup = insertedInTotal[TypeKey] = insertedInTotal[TypeKey] ? ++insertedInTotal[TypeKey] : 0;
 
         obj.queueOnInsert = startingIndex + Index;
@@ -70,7 +73,7 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
             } 
             obj.isRunning = false;
             obj.isResolved = true;
-            return cleanObject(obj);
+            return cleanObject(obj);            
         }, err => {
             if(getLaunchIndex(currentPromiseArrays[TypeKey]) !== -1){
                 currentPromiseArrays[TypeKey][getLaunchIndex(currentPromiseArrays[TypeKey])].resolveLaunchPromise();
@@ -107,6 +110,8 @@ const getLaunchArray = (PromiseFunc, InputValues, StartingIndex, TypeKey, Option
  * @param {Array} InputValues Array with the Inputvalues. One promise for each entry is created
  * @param {Number} MaxAtOnce Number of Promises that can run at the same time
  * @param {String} TypeKey A Key that is set to group promises together. So e.g. you set the key to TCP no matter which function calls with that Key it wont exceed the maxAtOnce Promises 
+ * 
+ * @returns {Object[]} Returns an array of Objects. One for each Promise that has to be created
  */
 function PromisesWithMaxAtOnce (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Options){
     // You can input any promise that should be limited by open at the same time
@@ -151,6 +156,15 @@ function PromisesWithMaxAtOnce (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Op
 
 // As the stack in currentPromiseArrays might get very long and slow down the application we will splice all of the launchArrays already
 // completely resolved out of the currentPromiseArrays
+/**
+ * As currentPromiseArrays can get extremely large and we want to keep the app performant, autoSplice will automatically
+ * remove a LaunchArray from the currentPromiseArrays after all of them have either been resolved or one is rejected
+ * 
+ * @param  {Object[]} LaunchArray LaunchArray you want to enable autosplice for
+ * @param  {String} TypeKey The TypeKey or Group that the Launcharray is of
+ * 
+ * @returns {void}
+ */
 function autoSpliceLaunchArray(LaunchArray, TypeKey){
     Promise.all(LaunchArray.map(e => {return e.result})).then(() => {
         var indFirstElement = currentPromiseArrays[TypeKey].indexOf(LaunchArray[0]);
@@ -158,10 +172,14 @@ function autoSpliceLaunchArray(LaunchArray, TypeKey){
 
         currentPromiseArrays[TypeKey].splice(indFirstElement, indLastElement); 
     }, err => {
-
+        currentPromiseArrays[TypeKey].splice(indFirstElement, indLastElement); 
     });
 }
-
+/**
+ * Will return the internal Array name for a launchArray where no Group or TypeKey has been assigned
+ * 
+ * @returns {String} The Name under which launchArray will be added to currentPromiseArrays
+ */
 function getInternalArrayName(){
     return "internal" + iCount++;
 }
