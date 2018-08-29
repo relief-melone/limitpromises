@@ -28,8 +28,8 @@ function retryPromiseTimeout(PromiseFunc, Obj, Options){
                     }, err => {
                         reject(err);
                     });
-                }, [true], Obj.maxAtOnce, Obj.TypeKey)
-            });
+                });
+            },[true], Obj.maxAtOnce, Obj.TypeKey);
             
             // Wait for the PromiseArray and either resolve the current promise or handle the rejects
             Promise.all(newPromise.map(r => {return r.result})).then(data => {
