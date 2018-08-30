@@ -166,10 +166,9 @@ function PromisesWithMaxAtOnce (PromiseFunc, InputValues, MaxAtOnce, TypeKey, Op
  * @returns {void}
  */
 function autoSpliceLaunchArray(LaunchArray, TypeKey){
+    var indFirstElement = currentPromiseArrays[TypeKey].indexOf(LaunchArray[0]);
+    var indLastElement = currentPromiseArrays[TypeKey].indexOf(LaunchArray[LaunchArray.length-1]);
     Promise.all(LaunchArray.map(e => {return e.result})).then(() => {
-        var indFirstElement = currentPromiseArrays[TypeKey].indexOf(LaunchArray[0]);
-        var indLastElement = currentPromiseArrays[TypeKey].indexOf(LaunchArray[LaunchArray.length-1]);
-
         currentPromiseArrays[TypeKey].splice(indFirstElement, indLastElement); 
     }, err => {
         currentPromiseArrays[TypeKey].splice(indFirstElement, indLastElement); 
